@@ -8,9 +8,6 @@ docs/raw_profile.json
 docs/transform_quality.json
 docs/pipeline_run.log
 
-# macOS finder
-.DS_Store
-
 # Python virtual environment
 .venv/
 
@@ -27,6 +24,5 @@ __pycache__/
 *.pyo
 .pytest_cache/
 .mypy_cache/
-
 
 .DS_Store
