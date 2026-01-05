@@ -1,256 +1,70 @@
-# ETL + Dashboard + Graphdatenbank (Neo4j) – Movie & Collaboration Insights
+# Movie ETL, Dashboard & Neo4j Graph
 
-Dieses Projekt implementiert einen vollständigen **ETL-Prozess** (Extract → Transform → Load) auf Basis eines umfangreichen Film-Datensatzes und stellt die Ergebnisse in einem **Dashboard** dar. Zusätzlich wird ein **Graph-Modell (Neo4j)** aufgebaut, um Beziehungen wie *Actor–Movie*, *Director–Movie* und *Movie–Genre/Keyword* zu analysieren.
-
----
-
-## 1) Use Case / Zielsetzung
-
-**Fragestellung (Business/BI):**
-- Wie entwickeln sich **Filme** über die Jahre (Anzahl, Einnahmen, Ratings)?
-- Welche **Genres** sind im Durchschnitt „erfolgreich“ (z. B. ROI / Revenue)?
-- Welche **Schauspieler:innen** oder **Regisseur:innen** sind stark vernetzt (Kollaborationen)?
-- Welche **Beziehungen** (Personen ↔ Filme ↔ Genres/Keywords/Companies) sind im Datensatz erkennbar?
-
-**Warum dieser Use Case?**
-- Der Datensatz ist **datenreich**, realistisch, enthält mehrere Tabellen und erfordert **Datenintegration** (klassischer ETL).
-- Er eignet sich sowohl für **Dashboard/BI** (aggregierte Kennzahlen und Trends) als auch für **Graphanalysen** (Netzwerke und Beziehungen).
+End-to-end Pipeline auf Basis des Kaggle-Datasets **“The Movies Dataset”**: ETL → kuratierte Tables → Streamlit-Dashboard → Neo4j-Graph-Export mit Import-/Query-Skripten.
 
 ---
 
-## 2) Datenquelle
+## Datenquelle
+- Kaggle slug: `rounakbanik/the-movies-dataset`
+- Genutzt: `movies_metadata.csv`, `credits.csv`, `keywords.csv`, `ratings_small.csv`, `links_small.csv`  
+  (MovieLens → TMDB Mapping via `links_small.csv`)
 
-Primärquelle: Kaggle Dataset **“The Movies Dataset”**  
-Kaggle slug: `rounakbanik/the-movies-dataset`
-
-Verwendete Dateien (Input):
-- `movies_metadata.csv`
-- `credits.csv`
-- `keywords.csv`
-- `ratings_small.csv`
-- `links_small.csv` (Mapping MovieLens `movieId` → TMDB `id`)
-
-> Wichtig: `ratings_small.csv` nutzt MovieLens IDs (`movieId`). Das Mapping auf TMDB-Filme erfolgt über `links_small.csv`.
-
-Details zur Datenquelle stehen zusätzlich in: `data_sources.md`.
-
----
-
-## 3) Architektur / Pipeline-Überblick
-
-### ETL-Stufen
-1. **Extract**
-   - Download des Kaggle-Datasets (CSV) via Kaggle API
-2. **Transform**
-   - Profiling (Datenqualität, Missing Values, Dtypes, Duplikate, Join-Checks)
-   - Bereinigung & Normalisierung in Dimensionen/Brücken (relational geeignet)
-   - Aggregation von Ratings (pro Film)
-3. **Load**
-   - **Curated Layer** für Dashboard (analysefreundliche Tabellen)
-   - **Neo4j Export** als Nodes/Relationships CSVs + Cypher Importskript
-
----
-
-## 4) Projektstruktur (wichtigste Ordner)
-
-data/
-raw_selected/kaggle_movies/ # Input CSVs (aus Kaggle)
-processed/ # bereinigte/normalisierte Tabellen (Parquet/CSV)
-curated/ # dashboard-ready Tabellen (Parquet/CSV)
-neo4j/ # Nodes & Relationships CSVs für Neo4j Import
-docs/
-raw_profile.md/.json # Profiling Ergebnis
-transform_quality.md/.json # Transform-Qualitätsreport
-pipeline_run.log # Lauf-Log
-dashboard/
-app.py # Streamlit Dashboard
-requirements.txt # Dashboard-Abhängigkeiten
-.streamlit/config.toml # optional: Theme/Layout
-src/ (oder Projektroot, je nach Setup)
-step01_profile_raw.py
-step02_transform_processed.py
-step03_build_curated.py
-step04_export_neo4j.py
-run_pipeline.py
-config.py
-neo4j_load.cypher
-neo4j_queries.cypher
-data_sources.md
-
-yaml
-Code kopieren
-
----
-
-## 5) Voraussetzungen
-
-- Python **3.10+**
-- (Optional) Conda/venv empfohlen
-- Kaggle API Zugriff (für Download)
-
-### Kaggle API Token
-1. Kaggle → Account → Settings → API → **Create New API Token**
-2. `kaggle.json` ablegen:
-   - macOS/Linux: `~/.kaggle/kaggle.json`
-   - Windows: `C:\Users\<NAME>\.kaggle\kaggle.json`
-3. macOS/Linux: `chmod 600 ~/.kaggle/kaggle.json`
-
----
-
-## 6) Installation (Python)
-
-Beispiel mit venv:
+## Setup
 ```bash
 python -m venv .venv
-source .venv/bin/activate   # macOS/Linux
-# .venv\Scripts\activate    # Windows
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+pip install -r requirements.txt      # Kern-ETL
+pip install -r dashboard/requirements.txt  # Dashboard (optional)
+```
 
-pip install --upgrade pip
-Falls die Pipeline eigene Requirements hat, entsprechend installieren (je nach Projektstand):
+### Kaggle API Token
+`kaggle.json` in `data/raw/` **oder** `~/.kaggle/` ablegen (Script erkennt beides) und Datei-Rechte ggf. 600 setzen. Alternativ env: `KAGGLE_USERNAME` / `KAGGLE_KEY`.
 
-bash
-Code kopieren
-pip install pandas pyarrow numpy plotly streamlit kaggle
-7) Pipeline ausführen (ETL End-to-End)
-7.1 Extract (Download Kaggle)
-bash
-Code kopieren
-python fetch_movies_kaggle.py
-Stelle sicher, dass danach die Input-Dateien in data/raw_selected/kaggle_movies/ liegen
-(oder passe Pfade entsprechend an, falls dein Fetch-Skript direkt dorthin schreibt).
+## Pipeline ausführen
+```bash
+python -m src.run_pipeline
+# Optionen:
+#   --skip-extract   # wenn data/raw_selected schon gefüllt ist
+#   --skip-profile
+#   --skip-neo4j
+#   --format parquet|csv
+```
+Outputs:
+- `data/raw_selected/kaggle_movies/` (aus Fetch)
+- `data/processed/` (dim/bridge/fact)
+- `data/curated/` (Dashboard-Tables)
+- `data/neo4j/*.csv` (Import für Neo4j)
+- `docs/neo4j_load.cypher`, `docs/neo4j_queries.cypher` (werden automatisch erzeugt)
+- `docs/raw_profile.*`, `docs/transform_quality.*`, `docs/pipeline_run.log`
 
-7.2 ETL Pipeline (Profiling → Transform → Curated → Neo4j Export)
-bash
-Code kopieren
-python run_pipeline.py
-Optionen (falls implementiert):
+Einzelner Fetch (falls nötig):
+```bash
+python -m src.fetch_movies_kaggle
+```
 
-bash
-Code kopieren
-python run_pipeline.py --skip-profile
-python run_pipeline.py --skip-extract
-python run_pipeline.py --skip-neo4j
-python run_pipeline.py --format parquet
-Erwartete Outputs:
-
-docs/raw_profile.md + docs/raw_profile.json
-
-docs/transform_quality.md + docs/transform_quality.json
-
-data/processed/*.parquet (dim/bridge/fact Tabellen)
-
-data/curated/*.parquet (dashboard-ready Tabellen)
-
-data/neo4j/*.csv (nodes + relationships)
-
-docs/pipeline_run.log
-
-8) Neo4j: Import + Abfragen
-8.1 CSVs in Neo4j import-Ordner kopieren
-Neo4j Desktop:
-
-Projekt → Datenbank → “Open Folder”
-
-CSVs aus data/neo4j/ nach <neo4j-db>/import/ kopieren
-
-8.2 Import ausführen
-Im Neo4j Browser:
-
-Inhalt von neo4j_load.cypher ausführen (Constraints + LOAD CSV + MERGE)
-
-Danach neo4j_queries.cypher ausführen (Beispielabfragen)
-
-8.3 Beispielabfragen (Ergebnisse für Bericht/Präsentation)
-Top Movies nach Rating/Count
-
-Häufigste Co-Actor Paare
-
-Top Directors
-
-Genres nach ROI
-
-Keyword/Genre Verknüpfungen
-
-Tipp für Abgabe: Speichere Screenshots von 2–3 Query-Resultaten + 1 Graph-Visualisierung.
-
-9) Dashboard ausführen (Streamlit)
-Installation (Dashboard-spezifisch):
-
-bash
-Code kopieren
-pip install -r dashboard/requirements.txt
-Start:
-
-bash
-Code kopieren
+## Dashboard (Streamlit)
+```bash
 streamlit run dashboard/app.py
-Das Dashboard liest standardmäßig aus data/curated/:
+# Netzwerkeinsatz:
+# streamlit run dashboard/app.py --server.address 0.0.0.0 --server.port 8501
+```
+Liest standardmäßig aus `data/curated/` (`curated_movie_overview`, `curated_genre_stats`, `curated_year_trends`; optional `graph_insights_top_coactors`). Hinweis im UI: Basis sind `ratings_small`/`links_small`.
 
-curated_movie_overview.(parquet|csv)
+## Neo4j
+1) CSVs aus `data/neo4j/` in den Neo4j-Import-Ordner kopieren.  
+2) Im Browser `:play` bzw. Editor:
+   - `docs/neo4j_load.cypher` ausführen (Neo4j 5 kompatibel, `CALL { … } IN TRANSACTIONS`, Constraints, ACTED_IN-Properties inkl. `cast_order`/`character`).
+   - `docs/neo4j_queries.cypher` ausführen (robuste Demo-Queries: deduplizierte Co-Actors, ROI-Filter, Directors mit Films>=3, etc.).
 
-curated_genre_stats.(parquet|csv)
+## Projektstruktur (Auszug)
+- `src/run_pipeline.py` – orchestriert Extract→Transform→Load→Neo4j
+- `src/fetch_movies_kaggle.py` – Kaggle Download + Auswahl
+- `src/step0x_*.py` – ETL Schritte (Profiling, Transform, Curated, Neo4j Export)
+- `dashboard/app.py` – Streamlit-App
+- `data/` – raw_selected, processed, curated, neo4j
+- `docs/` – Profile, Qualität, Logs, Neo4j Cypher
+- `templates/` – Cypher-Templates für Neo4j Load/Queries
 
-curated_year_trends.(parquet|csv)
-Optional:
-
-graph_insights_top_coactors.(parquet|csv) (für Graph Insights Seite)
-
-Dashboard-Inhalte:
-
-Filter: Jahr, Genre, Sprache, min. Rating-Count, Titel-Suche
-
-KPIs: #Filme, ØRating, Sum Revenue, Median Budget
-
-Trends: Filme pro Jahr, Revenue pro Jahr, optional Rating pro Jahr
-
-ROI & Success: Budget vs Revenue, ROI nach Genre, ROI Verteilung
-
-Graph Insights: Top Co-Actor-Paare (falls vorhanden)
-
-10) Datenqualität & Reflexion (für Bericht)
-Die wichtigsten Doku-Artefakte werden automatisch erzeugt:
-
-docs/raw_profile.md → Profiling/Qualität der Rohdaten
-
-docs/transform_quality.md → Qualität nach Transformation
-
-Beispiele für reflektierbare Punkte:
-
-Missing Values (z. B. budget/revenue)
-
-Duplikate
-
-Parsing von JSON-ähnlichen Spalten
-
-ID-Mapping (MovieLens → TMDB über links_small.csv)
-
-11) Troubleshooting (häufige Probleme)
-ModuleNotFoundError: kaggle
-
-bash
-Code kopieren
-python -m pip install kaggle
-Neo4j kann CSV nicht laden
-
-Stelle sicher, dass die CSVs im Neo4j import/ Ordner liegen
-
-Prüfe Neo4j Settings bzgl. file:/// Import (je nach Version/Config)
-
-Dashboard findet data/curated nicht
-
-Stelle sicher, dass dashboard/app.py im dashboard/ Ordner liegt
-
-Starte Streamlit aus dem Projekt-Root:
-
-bash
-Code kopieren
-streamlit run dashboard/app.py
-12) Ergebnis (Kurz)
-Reproduzierbare ETL-Pipeline
-
-Curated Tabellen für BI/Dashboard
-
-Neo4j Graphmodell + Importskript + Query-Sammlung
-
-Dashboard zur Visualisierung der wichtigsten Kennzahlen & Trends
-
+## Hinweise
+- Python 3.10+ empfohlen (entwickelt unter 3.14).  
+- `ratings_small` ist bewusst gewählt, um Größe/Performance für Uni-Abgabe niedrig zu halten. Für volle Ratings `python -m src.fetch_movies_kaggle --include-full-ratings` und Pipeline neu laufen lassen.

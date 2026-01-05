@@ -124,10 +124,10 @@ def _rating_column(df: pd.DataFrame) -> str:
 
 def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     filters: Dict[str, Any] = {}
-    # Reserve slot so the year slider stays visually on top
+    # Sidebar layout: keep the year slider on top
     year_slider_container = st.sidebar.empty()
 
-    # Min rating count first (affects which years are actually available)
+    # Rating threshold first because it shrinks the available years
     if "rating_count" in df.columns and df["rating_count"].notna().any():
         max_rating = int(pd.to_numeric(df["rating_count"], errors="coerce").max())
         max_rating = max(max_rating, 0)
@@ -138,7 +138,7 @@ def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     else:
         filters["min_rating_count"] = None
 
-    # Release year filter based on movies surviving the min_rating_count threshold
+    # Release year filter after applying the rating threshold
     filters["year_range"] = None
     if "release_year" in df.columns:
         year_source = df.copy()
