@@ -125,18 +125,22 @@ def _rating_column(df: pd.DataFrame) -> str:
 def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     filters: Dict[str, Any] = {}
     # Release year filter
-    year_min, year_max = None, None
+    filters["year_range"] = None
     if "release_year" in df.columns and df["release_year"].notna().any():
-        years = pd.to_numeric(df["release_year"], errors="coerce").dropna()
-        if not years.empty:
-            year_min = int(years.min())
-            year_max = int(years.max())
-        if year_min is not None and year_max is not None:
-            filters["year_range"] = st.sidebar.slider(
+        years = (
+            pd.to_numeric(df["release_year"], errors="coerce")
+            .dropna()
+            .astype(int)
+        )
+        year_options = sorted(years.unique().tolist())
+        if year_options:
+            default_range = (year_options[0], year_options[-1])
+            if len(year_options) == 1:
+                default_range = (year_options[0], year_options[0])
+            filters["year_range"] = st.sidebar.select_slider(
                 "Release Year Range",
-                min_value=year_min,
-                max_value=year_max,
-                value=(year_min, year_max),
+                options=year_options,
+                value=default_range,
             )
     # Genres
     all_genres = sorted(
