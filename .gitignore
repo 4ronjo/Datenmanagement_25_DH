@@ -1,5 +1,15 @@
 # Ignore CSV exports and datasets
 *.csv
+# Parquet exports
+*.parquet
+
+# Generated profiling/quality artifacts
+docs/raw_profile.json
+docs/transform_quality.json
+docs/pipeline_run.log
+
+# macOS finder
+.DS_Store
 
 # Python virtual environment
 .venv/
@@ -17,3 +27,6 @@ __pycache__/
 *.pyo
 .pytest_cache/
 .mypy_cache/
+
+
+.DS_Store

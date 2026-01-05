@@ -7,7 +7,7 @@ from __future__ import annotations
 import argparse
 import sys
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Allow running as a script from the src/ folder by injecting the repo root.
@@ -26,7 +26,7 @@ from src.config import ensure_directories, inputs, paths
 
 
 def _log(msg: str, log_path: Path) -> None:
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(timezone.utc).isoformat()
     line = f"[{timestamp} UTC] {msg}"
     print(line)
     log_path.parent.mkdir(parents=True, exist_ok=True)

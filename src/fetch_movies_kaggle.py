@@ -15,6 +15,8 @@ DEFAULT_TABLES = [
     "keywords.csv",
     # ratings.csv ist groß; für Uni/MVP reicht oft ratings_small.csv
     "ratings_small.csv",
+    # Mapping MovieLens -> TMDB (wird in Neo4j-Export genutzt)
+    "links_small.csv",
 ]
 
 OPTIONAL_TABLES = [
@@ -22,6 +24,38 @@ OPTIONAL_TABLES = [
     "links.csv",
     "links_small.csv",
 ]
+
+
+def download_movies(target_dir: Path, include_full_ratings: bool = False) -> None:
+    """
+    Download + unzip Kaggle dataset into data/raw/kaggle_movies and copy required CSVs to target_dir
+    (typically: data/raw_selected/kaggle_movies).
+    """
+    target_dir = Path(target_dir)
+
+    # target_dir is .../data/raw_selected/kaggle_movies  -> data_dir is .../data
+    data_dir = target_dir.parent.parent
+    raw_dir = data_dir / "raw" / "kaggle_movies"
+
+    _ensure_kaggle_token(data_dir)
+
+    print(f"[fetch_movies_kaggle] Download & unzip: {DATASET} -> {raw_dir}")
+    download_and_unzip(DATASET, raw_dir)
+
+    tables = list(DEFAULT_TABLES)
+
+    # If requested, switch to the big ratings file
+    if include_full_ratings:
+        if "ratings_small.csv" in tables:
+            tables.remove("ratings_small.csv")
+        tables.append("ratings.csv")
+
+    print(f"[fetch_movies_kaggle] Select tables -> {target_dir}")
+    select_tables(raw_dir, target_dir, tables)
+
+    manifest = target_dir / "_manifest.txt"
+    manifest.write_text("Selected tables:\n" + "\n".join(tables) + "\n", encoding="utf-8")
+    print(f"[fetch_movies_kaggle] Done. Manifest: {manifest}")
 
 
 def _ensure_kaggle_token(base: Path) -> Path | None:
@@ -108,39 +142,51 @@ def main() -> int:
     args = parser.parse_args()
 
     base = Path(args.out)
-    raw_dir = base / "raw" / "kaggle_movies"
     selected_dir = base / "raw_selected" / "kaggle_movies"
 
     try:
-        _ensure_kaggle_token(base)
+        download_movies(selected_dir, include_full_ratings=args.include_full_ratings)
     except FileNotFoundError as e:
         print(str(e), file=sys.stderr)
         return 2
-
-    print(f"[1/3] Download & unzip: {DATASET} -> {raw_dir}")
-    download_and_unzip(DATASET, raw_dir)
-
-    tables = list(DEFAULT_TABLES)
-    if args.include_full_ratings:
-        # ersetze small durch full (wenn gewünscht)
-        if "ratings_small.csv" in tables:
-            tables.remove("ratings_small.csv")
-        tables.append("ratings.csv")
-
-    # Du kannst optional links.* auch immer mitnehmen:
-    # tables += ["links.csv", "links_small.csv"]
-    print(f"[2/3] Select tables -> {selected_dir}")
-    select_tables(raw_dir, selected_dir, tables)
-
-    # Manifest
-    manifest = selected_dir / "_manifest.txt"
-    manifest.write_text(
-        "Selected tables:\n" + "\n".join(tables) + "\n",
-        encoding="utf-8",
-    )
-    print(f"[3/3] Done. Manifest: {manifest}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+def download_movies(target_dir: Path, include_full_ratings: bool = False) -> None:
+    """
+    Download + unzip Kaggle dataset into data/raw/kaggle_movies and copy required CSVs to target_dir
+    (typically: data/raw_selected/kaggle_movies).
+
+    This function exists so run_pipeline.py can call fetch_movies_kaggle.download_movies(...).
+    """
+    target_dir = Path(target_dir)
+
+    # target_dir is .../data/raw_selected/kaggle_movies  -> data_dir is .../data
+    data_dir = target_dir.parent.parent
+    raw_dir = data_dir / "raw" / "kaggle_movies"
+
+    _ensure_kaggle_token(data_dir)
+
+    print(f"[fetch_movies_kaggle] Download & unzip: {DATASET} -> {raw_dir}")
+    download_and_unzip(DATASET, raw_dir)
+
+    tables = list(DEFAULT_TABLES)
+
+    # If requested, switch to the big ratings file
+    if include_full_ratings:
+        if "ratings_small.csv" in tables:
+            tables.remove("ratings_small.csv")
+        tables.append("ratings.csv")
+
+    # IMPORTANT: pipeline expects links_small.csv for MovieLens->TMDB mapping
+    if "links_small.csv" not in tables:
+        tables.append("links_small.csv")
+
+    print(f"[fetch_movies_kaggle] Select tables -> {target_dir}")
+    select_tables(raw_dir, target_dir, tables)
+
+    manifest = target_dir / "_manifest.txt"
+    manifest.write_text("Selected tables:\n" + "\n".join(tables) + "\n", encoding="utf-8")
+    print(f"[fetch_movies_kaggle] Done. Manifest: {manifest}")
