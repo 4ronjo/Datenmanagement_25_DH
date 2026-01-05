@@ -1,0 +1,4 @@
+restreamlit
+pandas
+pyarrow
+plotly
