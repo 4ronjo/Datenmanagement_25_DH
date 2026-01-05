@@ -1,0 +1,5 @@
+Selected tables:
+movies_metadata.csv
+credits.csv
+keywords.csv
+ratings_small.csv

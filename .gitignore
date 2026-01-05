@@ -1,0 +1,19 @@
+# Ignore CSV exports and datasets
+*.csv
+
+# Python virtual environment
+.venv/
+
+# Logs
+*.log
+
+# Kaggle API credentials
+data/raw/kaggle.json
+.kaggle/kaggle.json
+
+# Python bytecode/cache
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/

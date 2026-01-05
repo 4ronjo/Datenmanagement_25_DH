@@ -24,18 +24,36 @@ OPTIONAL_TABLES = [
 ]
 
 
-def _check_kaggle_token() -> None:
-    """Checks whether kaggle.json likely exists."""
-    home = Path.home()
-    candidates = [
-        home / ".kaggle" / "kaggle.json",
-        # Some setups use env var
+def _ensure_kaggle_token(base: Path) -> Path | None:
+    """Find Kaggle token (prefers repo-local data/raw) and configure env accordingly."""
+    env_dir = os.environ.get("KAGGLE_CONFIG_DIR")
+    candidates = []
+    if env_dir:
+        candidates.append(Path(env_dir))
+    candidates += [
+        base / "raw",
+        Path.home() / ".kaggle",
     ]
-    if not any(p.exists() for p in candidates) and not os.environ.get("KAGGLE_USERNAME"):
-        msg = (
-            "Kaggle API Token nicht gefunden."
-        )
-        raise FileNotFoundError(msg)
+
+    for candidate in candidates:
+        config = candidate / "kaggle.json"
+        if config.exists():
+            os.environ.setdefault("KAGGLE_CONFIG_DIR", str(candidate))
+            try:
+                config.chmod(0o600)
+            except PermissionError:
+                # Best effort; Kaggle only warns about permissions.
+                pass
+            return candidate
+
+    if os.environ.get("KAGGLE_USERNAME") and os.environ.get("KAGGLE_KEY"):
+        return None
+
+    msg = (
+        "Kaggle API Token nicht gefunden. Lege kaggle.json in data/raw/ oder ~/.kaggle/ ab "
+        "oder setze KAGGLE_USERNAME/KAGGLE_KEY."
+    )
+    raise FileNotFoundError(msg)
 
 
 def download_and_unzip(dataset: str, raw_dir: Path) -> None:
@@ -94,7 +112,7 @@ def main() -> int:
     selected_dir = base / "raw_selected" / "kaggle_movies"
 
     try:
-        _check_kaggle_token()
+        _ensure_kaggle_token(base)
     except FileNotFoundError as e:
         print(str(e), file=sys.stderr)
         return 2
