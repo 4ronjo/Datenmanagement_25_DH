@@ -124,24 +124,47 @@ def _rating_column(df: pd.DataFrame) -> str:
 
 def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     filters: Dict[str, Any] = {}
-    # Release year filter
-    filters["year_range"] = None
-    if "release_year" in df.columns and df["release_year"].notna().any():
-        years = (
-            pd.to_numeric(df["release_year"], errors="coerce")
-            .dropna()
-            .astype(int)
+    # Reserve slot so the year slider stays visually on top
+    year_slider_container = st.sidebar.empty()
+
+    # Min rating count first (affects which years are actually available)
+    if "rating_count" in df.columns and df["rating_count"].notna().any():
+        max_rating = int(pd.to_numeric(df["rating_count"], errors="coerce").max())
+        max_rating = max(max_rating, 0)
+        default_min = 0  # be inclusive; early years often have few ratings
+        filters["min_rating_count"] = st.sidebar.slider(
+            "Minimum number of ratings", min_value=0, max_value=max_rating, value=default_min
         )
-        year_options = sorted(years.unique().tolist())
-        if year_options:
-            default_range = (year_options[0], year_options[-1])
-            if len(year_options) == 1:
-                default_range = (year_options[0], year_options[0])
-            filters["year_range"] = st.sidebar.select_slider(
-                "Release Year Range",
-                options=year_options,
-                value=default_range,
-            )
+    else:
+        filters["min_rating_count"] = None
+
+    # Release year filter based on movies surviving the min_rating_count threshold
+    filters["year_range"] = None
+    if "release_year" in df.columns:
+        year_source = df.copy()
+        year_source["release_year"] = pd.to_numeric(
+            year_source["release_year"], errors="coerce"
+        )
+        if filters["min_rating_count"] is not None and "rating_count" in year_source.columns:
+            year_source = year_source[
+                year_source["rating_count"].fillna(0) >= filters["min_rating_count"]
+            ]
+        years = year_source["release_year"].dropna().astype(int)
+        if not years.empty:
+            year_min = int(years.min())
+            year_max = int(years.max())
+            if year_min == year_max:
+                filters["year_range"] = (year_min, year_max)
+                with year_slider_container:
+                    st.caption(f"Release Year: {year_min} (einziger Jahrgang nach Filter)")
+            else:
+                with year_slider_container:
+                    filters["year_range"] = st.slider(
+                        "Release Year Range",
+                        min_value=year_min,
+                        max_value=year_max,
+                        value=(year_min, year_max),
+                    )
     # Genres
     all_genres = sorted(
         {
@@ -157,15 +180,6 @@ def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         filters["languages"] = st.sidebar.multiselect("Original Language", options=langs)
     else:
         filters["languages"] = []
-    # Min rating count
-    if "rating_count" in df.columns and df["rating_count"].notna().any():
-        max_rating = int(df["rating_count"].max())
-        default_min = 50 if max_rating >= 50 else 0
-        filters["min_rating_count"] = st.sidebar.slider(
-            "Minimum rating_count", min_value=0, max_value=max_rating, value=default_min
-        )
-    else:
-        filters["min_rating_count"] = None
     # Text search
     filters["search_text"] = st.sidebar.text_input("Titelsuche")
 
@@ -469,6 +483,7 @@ def main() -> None:
         file_name="filtered_movies.csv",
         mime="text/csv",
     )
+    st.sidebar.caption("Hinweis: Datenbasis = Kaggle 'The Movies Dataset' mit ratings_small/links_small (MovieLens subset).")
 
 
 if __name__ == "__main__":

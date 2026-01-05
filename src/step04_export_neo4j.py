@@ -12,6 +12,8 @@ import pandas as pd
 
 from src.config import ensure_directories, paths
 
+TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
+
 
 def _read_table(name: str, fmt: str, directory: Path) -> pd.DataFrame:
     path = directory / f"{name}.{ 'parquet' if fmt == 'parquet' else 'csv'}"
@@ -22,7 +24,17 @@ def _read_table(name: str, fmt: str, directory: Path) -> pd.DataFrame:
 
 def _write_csv(df: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(path, index=False)
+    # Use empty string for NA to avoid literal "<NA>" in Neo4j loader
+    df.to_csv(path, index=False, na_rep="")
+
+
+def _write_text(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def _read_template(name: str) -> str:
+    return (TEMPLATES_DIR / name).read_text(encoding="utf-8")
 
 
 def _safe_numeric(series: pd.Series) -> pd.Series:
@@ -131,6 +143,9 @@ def main(input_format: str = "parquet") -> None:
     _write_csv(rel_has_keyword, neo4j_dir / "rel_HAS_KEYWORD.csv")
     _write_csv(rel_produced, neo4j_dir / "rel_PRODUCED.csv")
 
+    _write_text(docs_dir / "neo4j_load.cypher", _read_template("neo4j_load.cypher.tpl"))
+    _write_text(docs_dir / "neo4j_queries.cypher", _read_template("neo4j_queries.cypher.tpl"))
+
     summary = {
         "nodes": {
             "Movie": len(nodes_movie),
@@ -171,6 +186,8 @@ def main(input_format: str = "parquet") -> None:
     (docs_dir / "neo4j_export_summary.md").write_text("\n".join(lines), encoding="utf-8")
     print(f"Neo4j CSVs written to {neo4j_dir}")
     print("Summary written to docs/neo4j_export_summary.md")
+    print("Wrote docs/neo4j_load.cypher")
+    print("Wrote docs/neo4j_queries.cypher")
 
 
 if __name__ == "__main__":
