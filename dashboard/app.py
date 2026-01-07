@@ -98,11 +98,11 @@ def validate_tables(tables: Dict[str, pd.DataFrame]) -> None:
     )
 
     if missing_movies:
-        st.error(f"curated_movie_overview fehlt Spalten: {', '.join(missing_movies)}")
+        st.error(f"curated_movie_overview missing columns: {', '.join(missing_movies)}")
     if missing_genres:
-        st.error(f"curated_genre_stats fehlt Spalten: {', '.join(missing_genres)}")
+        st.error(f"curated_genre_stats missing columns: {', '.join(missing_genres)}")
     if missing_year:
-        st.error(f"curated_year_trends fehlt Spalten: {', '.join(missing_year)}")
+        st.error(f"curated_year_trends missing columns: {', '.join(missing_year)}")
 
 
 def _split_genres(genre_str: str) -> List[str]:
@@ -120,6 +120,10 @@ def _rating_column(df: pd.DataFrame) -> str:
     if "vote_average" in df.columns and df["vote_average"].notna().any():
         return "vote_average"
     return "avg_rating" if "avg_rating" in df.columns else "vote_average"
+
+
+def _rating_label(col: str) -> str:
+    return {"avg_rating": "Average rating", "vote_average": "Vote average"}.get(col, "Rating")
 
 
 def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
@@ -156,7 +160,7 @@ def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
             if year_min == year_max:
                 filters["year_range"] = (year_min, year_max)
                 with year_slider_container:
-                    st.caption(f"Release Year: {year_min} (einziger Jahrgang nach Filter)")
+                    st.caption(f"Release Year: {year_min} (only year after filters)")
             else:
                 with year_slider_container:
                     filters["year_range"] = st.slider(
@@ -181,7 +185,7 @@ def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     else:
         filters["languages"] = []
     # Text search
-    filters["search_text"] = st.sidebar.text_input("Titelsuche")
+    filters["search_text"] = st.sidebar.text_input("Title search")
 
     df_filt = df.copy()
     if "release_year" in df_filt.columns:
@@ -210,14 +214,14 @@ def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
 def kpi_overview(df: pd.DataFrame) -> None:
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Filme (gefiltert)", f"{len(df):,}")
+        st.metric("Movies (filtered)", f"{len(df):,}")
     rating_col = _rating_column(df)
     rating_value = (
         pd.to_numeric(df[rating_col], errors="coerce").mean() if rating_col in df.columns else None
     )
     with col2:
         st.metric(
-            "Ø Rating",
+            "Avg rating",
             f"{rating_value:.2f}"
             if rating_value is not None and pd.notna(rating_value)
             else "n/a",
@@ -232,7 +236,7 @@ def kpi_overview(df: pd.DataFrame) -> None:
     with col4:
         budget_median = pd.to_numeric(df["budget"], errors="coerce").median() if "budget" in df.columns else float("nan")
         st.metric(
-            "Budget Median",
+            "Median budget",
             f"{budget_median:,.0f}" if pd.notna(budget_median) else "n/a",
         )
 
@@ -249,15 +253,27 @@ def chart_top_genres(df: pd.DataFrame, genre_stats: pd.DataFrame) -> None:
         if not exploded.empty:
             counts = exploded.value_counts().head(10).reset_index()
             counts.columns = ["genre_name", "movie_count"]
-            fig = px.bar(counts, x="genre_name", y="movie_count", title="Top Genres (gefiltert)")
+            fig = px.bar(
+                counts,
+                x="genre_name",
+                y="movie_count",
+                title="Top Genres (filtered)",
+                labels={"genre_name": "Genre", "movie_count": "Movies"},
+            )
             st.plotly_chart(fig, use_container_width=True)
             return
     if not genre_stats.empty:
         top10 = genre_stats.sort_values("movie_count", ascending=False).head(10)
-        fig = px.bar(top10, x="genre_name", y="movie_count", title="Top Genres (gesamt)")
+        fig = px.bar(
+            top10,
+            x="genre_name",
+            y="movie_count",
+            title="Top Genres (overall)",
+            labels={"genre_name": "Genre", "movie_count": "Movies"},
+        )
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Keine Genre-Daten verfügbar.")
+        st.info("No genre data available.")
 
 
 def chart_rating_hist(df: pd.DataFrame) -> None:
@@ -265,20 +281,45 @@ def chart_rating_hist(df: pd.DataFrame) -> None:
     if rating_col in df.columns and df[rating_col].notna().any():
         df_plot = df.copy()
         df_plot[rating_col] = pd.to_numeric(df_plot[rating_col], errors="coerce")
-        fig = px.histogram(df_plot, x=rating_col, nbins=30, title=f"Verteilung {rating_col}")
+        rating_label = _rating_label(rating_col)
+        fig = px.histogram(
+            df_plot,
+            x=rating_col,
+            nbins=30,
+            title=f"{rating_label} distribution",
+            labels={rating_col: rating_label},
+        )
         st.plotly_chart(fig, use_container_width=True)
     elif "roi" in df.columns and df["roi"].notna().any():
         df_plot = df.copy()
         df_plot["roi"] = pd.to_numeric(df_plot["roi"], errors="coerce")
-        fig = px.histogram(df_plot, x="roi", nbins=30, title="Verteilung ROI")
+        fig = px.histogram(
+            df_plot,
+            x="roi",
+            nbins=30,
+            title="ROI distribution",
+            labels={"roi": "ROI"},
+        )
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Keine Ratings/ROI für Histogramm verfügbar.")
+        st.info("No ratings/ROI available for histogram.")
+
+
+def glossary_box() -> None:
+    st.info(
+        "Glossary:\n"
+        "- Revenue: total earnings for a movie.\n"
+        "- Budget: production budget.\n"
+        "- ROI: revenue / budget (return relative to budget).\n"
+        "- Rating count: number of user votes.\n"
+        "- Average rating: mean rating per movie.\n"
+        "- Release year: year the movie was released."
+    )
 
 
 def table_top_movies(df: pd.DataFrame) -> None:
     if df.empty:
-        st.warning("Keine Filme nach Filterkriterien.")
+        st.warning("No movies match the filters.")
         return
     rating_col = _rating_column(df)
     sort_cols = [rating_col] if rating_col in df.columns else []
@@ -307,22 +348,24 @@ def table_top_movies(df: pd.DataFrame) -> None:
 
 def page_overview(df_filt: pd.DataFrame, genre_stats: pd.DataFrame) -> None:
     st.header("Overview")
-    st.write("KPIs und Top-Genres/Filme basierend auf den gefilterten Daten.")
+    st.write("KPIs and top genres/movies based on the filtered data.")
     kpi_overview(df_filt)
     col1, col2 = st.columns(2)
     with col1:
         chart_top_genres(df_filt, genre_stats)
     with col2:
         chart_rating_hist(df_filt)
+    glossary_box()
     st.subheader("Top Movies")
     table_top_movies(df_filt)
+    glossary_box()
 
 
 def page_trends(year_trends: pd.DataFrame, filters: Dict[str, Any]) -> None:
     st.header("Trends")
-    st.write("Zeitverlauf: Anzahl Filme, Revenue und optional Ratings.")
+    st.write("Time series: movie count, revenue, and optional ratings.")
     if year_trends.empty:
-        st.warning("Keine Year-Trend-Daten gefunden.")
+        st.warning("No year trend data found.")
         return
     yr = year_trends.copy()
     yr["release_year"] = pd.to_numeric(yr["release_year"], errors="coerce")
@@ -334,25 +377,44 @@ def page_trends(year_trends: pd.DataFrame, filters: Dict[str, Any]) -> None:
         yr_min, yr_max = filters["year_range"]
         yr = yr[(yr["release_year"] >= yr_min) & (yr["release_year"] <= yr_max)]
     if yr.empty:
-        st.warning("Keine Daten im gewählten Jahr-Bereich.")
+        st.warning("No data in the selected year range.")
         return
     col1, col2 = st.columns(2)
     with col1:
-        fig = px.line(yr, x="release_year", y="movie_count", title="Movie Count per Year")
+        fig = px.line(
+            yr,
+            x="release_year",
+            y="movie_count",
+            title="Movie count per year",
+            labels={"release_year": "Release year", "movie_count": "Movies"},
+        )
         st.plotly_chart(fig, use_container_width=True)
     with col2:
-        fig = px.line(yr, x="release_year", y="avg_revenue", title="Avg Revenue per Year")
+        fig = px.line(
+            yr,
+            x="release_year",
+            y="avg_revenue",
+            title="Average revenue per year",
+            labels={"release_year": "Release year", "avg_revenue": "Average revenue"},
+        )
         st.plotly_chart(fig, use_container_width=True)
     if "avg_rating" in yr.columns and yr["avg_rating"].notna().any():
-        fig = px.line(yr, x="release_year", y="avg_rating", title="Avg Rating per Year")
+        fig = px.line(
+            yr,
+            x="release_year",
+            y="avg_rating",
+            title="Average rating per year",
+            labels={"release_year": "Release year", "avg_rating": "Average rating"},
+        )
         st.plotly_chart(fig, use_container_width=True)
+    glossary_box()
 
 
 def page_roi(df_filt: pd.DataFrame, genre_stats: pd.DataFrame) -> None:
     st.header("ROI & Success")
-    st.write("Budget, Revenue und ROI Analysen.")
+    st.write("Budget, revenue, and ROI analysis.")
     if df_filt.empty:
-        st.warning("Keine Filme nach Filterkriterien.")
+        st.warning("No movies match the filters.")
         return
     clean = df_filt.copy()
     for col in ["budget", "revenue", "roi"]:
@@ -371,33 +433,47 @@ def page_roi(df_filt: pd.DataFrame, genre_stats: pd.DataFrame) -> None:
                 x="budget",
                 y="revenue",
                 hover_data=hover_cols,
-                title="Budget vs Revenue",
+                title="Budget vs revenue",
+                labels={"budget": "Budget", "revenue": "Revenue"},
             )
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Keine Daten für Budget vs Revenue.")
+            st.info("No data for budget vs revenue.")
     with col2:
         if not genre_stats.empty and "avg_roi" in genre_stats.columns:
             top = genre_stats.sort_values("avg_roi", ascending=False).head(15)
-            fig = px.bar(top, x="genre_name", y="avg_roi", title="Avg ROI nach Genre")
+            fig = px.bar(
+                top,
+                x="genre_name",
+                y="avg_roi",
+                title="Average ROI by genre",
+                labels={"genre_name": "Genre", "avg_roi": "Average ROI"},
+            )
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Keine Genre-ROI-Daten verfügbar.")
-    st.subheader("ROI Verteilung")
+            st.info("No genre ROI data available.")
+    st.subheader("ROI distribution")
     if "roi" in clean.columns and clean["roi"].notna().any():
-        fig = px.histogram(clean, x="roi", nbins=40, title="ROI Histogramm")
+        fig = px.histogram(
+            clean,
+            x="roi",
+            nbins=40,
+            title="ROI distribution",
+            labels={"roi": "ROI"},
+        )
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Keine ROI-Daten verfügbar.")
-    st.caption("ROI wird als revenue / budget berechnet; bei budget=0 -> ROI = NaN.")
+        st.info("No ROI data available.")
+    st.caption("ROI is calculated as revenue / budget; if budget=0 -> ROI = NaN.")
+    glossary_box()
 
 
 def page_collab(graph_df: pd.DataFrame) -> None:
     st.header("Collaboration Graph Insights")
-    st.write("Top Co-Actor Paare als Proxy für Graph-Erkenntnisse.")
+    st.write("Top co-actor pairs as a proxy for graph insights.")
     if graph_df.empty:
         st.warning(
-            "Graph Insights Datei nicht gefunden. Bitte zuerst Neo4j Queries exportieren (graph_insights_top_coactors)."
+            "Graph insights file not found. Export Neo4j queries first (graph_insights_top_coactors)."
         )
         return
     required = ["actor_1", "actor_2", "shared_movies_count"]
@@ -405,8 +481,8 @@ def page_collab(graph_df: pd.DataFrame) -> None:
     for col in missing:
         graph_df[col] = pd.NA
     if missing:
-        st.warning(f"Graph Insights fehlen Spalten: {', '.join(missing)}")
-    st.metric("Co-Actor Paare", f"{len(graph_df):,}")
+        st.warning(f"Graph insights missing columns: {', '.join(missing)}")
+    st.metric("Co-actor pairs", f"{len(graph_df):,}")
     top_pairs = graph_df.sort_values("shared_movies_count", ascending=False).head(20)
     st.dataframe(top_pairs, use_container_width=True)
     if not top_pairs.empty:
@@ -416,9 +492,15 @@ def page_collab(graph_df: pd.DataFrame) -> None:
             y="actor_1",
             color="actor_2",
             orientation="h",
-            title="Top 10 Co-Actor Paare",
+            title="Top 10 co-actor pairs",
+            labels={
+                "shared_movies_count": "Shared movies",
+                "actor_1": "Actor 1",
+                "actor_2": "Actor 2",
+            },
         )
         st.plotly_chart(fig, use_container_width=True)
+        glossary_box()
     actors = sorted(
         {
             a
@@ -429,18 +511,25 @@ def page_collab(graph_df: pd.DataFrame) -> None:
         }
     )
     if actors:
-        selected = st.selectbox("Actor auswählen", options=["(kein Filter)"] + actors)
-        if selected and selected != "(kein Filter)":
+        selected = st.selectbox("Select actor", options=["(no filter)"] + actors)
+        if selected and selected != "(no filter)":
             subset = graph_df[
                 (graph_df["actor_1"] == selected) | (graph_df["actor_2"] == selected)
             ].sort_values("shared_movies_count", ascending=False)
-            st.subheader(f"Top Collaborations für {selected}")
+            st.subheader(f"Top collaborations for {selected}")
             st.dataframe(subset.head(20), use_container_width=True)
 
 
 def main() -> None:
     st.title("Movie & Collaboration Insights")
-    st.sidebar.header("Navigation & Filter")
+    st.markdown(
+        "This dashboard turns the Kaggle Movies dataset into business-ready insights: "
+        "financial performance (revenue/ROI), popularity (ratings/votes), time trends, and "
+        "collaboration patterns across cast, genres, keywords, and companies. The ETL pipeline "
+        "cleans and links the raw files so you can explore both classic KPIs and "
+        "relationship-based questions."
+    )
+    st.sidebar.header("Navigation & Filters")
 
     tables = load_curated_tables()
     validate_tables(tables)
@@ -451,13 +540,13 @@ def main() -> None:
     graph_df = tables.get("graph_insights", pd.DataFrame())
 
     if movie_df.empty:
-        st.error("Keine curated_movie_overview Daten gefunden.")
+        st.error("No curated_movie_overview data found.")
         return
 
     df_filt, filters = apply_filters(movie_df)
 
     page = st.sidebar.radio(
-        "Seite",
+        "Page",
         options=[
             "Overview",
             "Trends",
@@ -483,7 +572,9 @@ def main() -> None:
         file_name="filtered_movies.csv",
         mime="text/csv",
     )
-    st.sidebar.caption("Hinweis: Datenbasis = Kaggle 'The Movies Dataset' mit ratings_small/links_small (MovieLens subset).")
+    st.sidebar.caption(
+        "Note: data source is Kaggle 'The Movies Dataset' with ratings_small/links_small (MovieLens subset)."
+    )
 
 
 if __name__ == "__main__":

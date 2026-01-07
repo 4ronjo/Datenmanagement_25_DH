@@ -1,5 +1,7 @@
 # Ignore CSV exports and datasets
 *.csv
+# Keep the graph insights export under version control
+!data/curated/graph_insights_top_coactors.csv
 # Parquet exports
 *.parquet
 
