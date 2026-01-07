@@ -22,6 +22,7 @@ from src import (
     step03_build_curated,
     step04_export_neo4j,
     step05_build_insights,
+    step06_build_sqlite,
 )
 from src.config import ensure_directories, inputs, paths
 
@@ -64,6 +65,7 @@ def run_pipeline(
         ("build_curated", lambda: step03_build_curated.main(output_format), True),
         ("export_neo4j", lambda: step04_export_neo4j.main(output_format), not skip_neo4j),
         ("build_insights", step05_build_insights.main, True),
+        ("build_sqlite", step06_build_sqlite.main, True),
     ]
 
     for name, func, should_run in steps:

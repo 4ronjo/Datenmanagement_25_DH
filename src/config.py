@@ -17,6 +17,7 @@ class DataPaths:
     raw_selected_dir: Path = BASE_DIR / "data" / "raw_selected" / "kaggle_movies"
     processed_dir: Path = BASE_DIR / "data" / "processed"
     curated_dir: Path = BASE_DIR / "data" / "curated"
+    sql_dir: Path = BASE_DIR / "data" / "sql"
     neo4j_dir: Path = BASE_DIR / "data" / "neo4j"
     docs_dir: Path = BASE_DIR / "docs"
 
@@ -47,6 +48,7 @@ def ensure_directories() -> None:
         paths.raw_selected_dir,
         paths.processed_dir,
         paths.curated_dir,
+        paths.sql_dir,
         paths.neo4j_dir,
         paths.docs_dir,
     ):

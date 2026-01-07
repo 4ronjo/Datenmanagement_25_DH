@@ -415,7 +415,6 @@ def page_overview(
         chart_top_genres(df_filt, genre_stats)
     with col2:
         chart_rating_hist(df_filt)
-    glossary_box()
     st.subheader("Top Movies")
     table_top_movies(df_filt)
     glossary_box()

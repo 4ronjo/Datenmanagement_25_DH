@@ -56,6 +56,41 @@ Liest standardmäßig aus `data/curated/` (`curated_movie_overview`, `curated_ge
    - `docs/neo4j_load.cypher` ausführen (Neo4j 5 kompatibel, `CALL { … } IN TRANSACTIONS`, Constraints, ACTED_IN-Properties inkl. `cast_order`/`character`).
    - `docs/neo4j_queries.cypher` ausführen (robuste Demo-Queries: deduplizierte Co-Actors, ROI-Filter, Directors mit Films>=3, etc.).
 
+## SQLite (zusätzliches Artefakt)
+Der Pipeline-Run erzeugt automatisch eine SQLite-DB:
+- Datei: `data/sql/movies_etl.sqlite`
+- Zusammenfassung: `docs/sqlite_export_summary.md`
+
+Öffnen:
+- GUI: DB Browser for SQLite
+- Python:
+```python
+import sqlite3
+conn = sqlite3.connect("data/sql/movies_etl.sqlite")
+```
+
+Beispiel-Queries:
+```sql
+-- Top Movies nach Rating (mit genug Votes)
+SELECT title, release_year, avg_rating, rating_count
+FROM curated_movie_overview
+WHERE rating_count >= 50
+ORDER BY avg_rating DESC, rating_count DESC
+LIMIT 20;
+
+-- ROI nach Genre
+SELECT genre_name, avg_roi, movie_count
+FROM curated_genre_stats
+ORDER BY avg_roi DESC
+LIMIT 15;
+
+-- Häufigste Co-Actor Paare (falls vorhanden)
+SELECT actor_1, actor_2, shared_movies_count
+FROM graph_insights_top_coactors
+ORDER BY shared_movies_count DESC
+LIMIT 20;
+```
+
 ## Projektstruktur (Auszug)
 - `src/run_pipeline.py` – orchestriert Extract→Transform→Load→Neo4j
 - `src/fetch_movies_kaggle.py` – Kaggle Download + Auswahl

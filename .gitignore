@@ -5,6 +5,11 @@
 # Parquet exports
 *.parquet
 
+# SQLite artifacts
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
 # Generated profiling/quality artifacts
 docs/raw_profile.json
 docs/transform_quality.json
