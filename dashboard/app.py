@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -17,6 +18,7 @@ st.set_page_config(
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CURATED_DIR = BASE_DIR / "data" / "curated"
+INSIGHTS_PATH = CURATED_DIR / "insights.json"
 
 
 def _find_table(name: str) -> Tuple[Optional[Path], Optional[str]]:
@@ -54,6 +56,41 @@ def load_curated_tables() -> Dict[str, pd.DataFrame]:
     else:
         tables["graph_insights"] = pd.DataFrame()
     return tables
+
+
+def _default_insights() -> Dict[str, Any]:
+    return {
+        "overview": {
+            "title": "Movie & Collaboration Insights",
+            "subtitle": "KPIs and top genres/movies based on the filtered data.",
+            "kpis": {},
+        },
+        "trends": {
+            "intro": "Time series of movies and key metrics by release year.",
+            "kpis": {},
+        },
+        "roi": {
+            "intro": "ROI & Success: compare budget, revenue, and ROI across genres.",
+            "data_quality_notes": [],
+            "kpis": {},
+        },
+        "collab": {
+            "intro": "Top co-actor pairs as a proxy for graph insights.",
+            "kpis": {"coactor_pairs": 0},
+            "top_pairs_preview": [],
+        },
+        "data_quality": {"tables": {}},
+    }
+
+
+@st.cache_data(show_spinner=False)
+def load_insights() -> Dict[str, Any]:
+    if INSIGHTS_PATH.exists():
+        try:
+            return json.loads(INSIGHTS_PATH.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return _default_insights()
+    return _default_insights()
 
 
 def _ensure_columns(df: pd.DataFrame, required: List[str], optional: List[str]) -> List[str]:
@@ -124,6 +161,15 @@ def _rating_column(df: pd.DataFrame) -> str:
 
 def _rating_label(col: str) -> str:
     return {"avg_rating": "Average rating", "vote_average": "Vote average"}.get(col, "Rating")
+
+
+def _render_kpi_row(items: List[Tuple[str, str]]) -> None:
+    if not items:
+        return
+    cols = st.columns(len(items))
+    for col, (label, value) in zip(cols, items):
+        with col:
+            st.metric(label, value)
 
 
 def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
@@ -346,9 +392,23 @@ def table_top_movies(df: pd.DataFrame) -> None:
     st.dataframe(df_disp, use_container_width=True)
 
 
-def page_overview(df_filt: pd.DataFrame, genre_stats: pd.DataFrame) -> None:
+def page_overview(
+    df_filt: pd.DataFrame, genre_stats: pd.DataFrame, insights: Dict[str, Any]
+) -> None:
     st.header("Overview")
-    st.write("KPIs and top genres/movies based on the filtered data.")
+    overview = insights.get("overview", {})
+    subtitle = overview.get("subtitle")
+    if subtitle:
+        st.write(subtitle)
+    kpis = overview.get("kpis", {})
+    items = []
+    if "movies_total" in kpis:
+        items.append(("Dataset movies", f"{kpis['movies_total']:,}"))
+    if "year_min" in kpis and "year_max" in kpis:
+        items.append(("Year range", f"{kpis['year_min']}-{kpis['year_max']}"))
+    if "avg_rating_overall" in kpis:
+        items.append(("Average rating (overall)", f"{kpis['avg_rating_overall']:.2f}"))
+    _render_kpi_row(items)
     kpi_overview(df_filt)
     col1, col2 = st.columns(2)
     with col1:
@@ -361,9 +421,21 @@ def page_overview(df_filt: pd.DataFrame, genre_stats: pd.DataFrame) -> None:
     glossary_box()
 
 
-def page_trends(year_trends: pd.DataFrame, filters: Dict[str, Any]) -> None:
+def page_trends(
+    year_trends: pd.DataFrame, filters: Dict[str, Any], insights: Dict[str, Any]
+) -> None:
     st.header("Trends")
-    st.write("Time series: movie count, revenue, and optional ratings.")
+    trends = insights.get("trends", {})
+    intro = trends.get("intro")
+    if intro:
+        st.write(intro)
+    kpis = trends.get("kpis", {})
+    items = []
+    if "years_count" in kpis:
+        items.append(("Years covered", f"{kpis['years_count']:,}"))
+    if "top_year_by_movies" in kpis:
+        items.append(("Top year by movies", str(kpis["top_year_by_movies"])))
+    _render_kpi_row(items)
     if year_trends.empty:
         st.warning("No year trend data found.")
         return
@@ -410,9 +482,24 @@ def page_trends(year_trends: pd.DataFrame, filters: Dict[str, Any]) -> None:
     glossary_box()
 
 
-def page_roi(df_filt: pd.DataFrame, genre_stats: pd.DataFrame) -> None:
+def page_roi(
+    df_filt: pd.DataFrame, genre_stats: pd.DataFrame, insights: Dict[str, Any]
+) -> None:
     st.header("ROI & Success")
-    st.write("Budget, revenue, and ROI analysis.")
+    roi = insights.get("roi", {})
+    intro = roi.get("intro")
+    if intro:
+        st.write(intro)
+    kpis = roi.get("kpis", {})
+    items = []
+    if "genres_count" in kpis:
+        items.append(("Genres in dataset", f"{kpis['genres_count']:,}"))
+    if "top_genre_by_roi" in kpis:
+        items.append(("Top genre by ROI", str(kpis["top_genre_by_roi"])))
+    _render_kpi_row(items)
+    notes = roi.get("data_quality_notes", [])
+    if notes:
+        st.info("Data quality notes:\n- " + "\n- ".join(notes))
     if df_filt.empty:
         st.warning("No movies match the filters.")
         return
@@ -468,13 +555,31 @@ def page_roi(df_filt: pd.DataFrame, genre_stats: pd.DataFrame) -> None:
     glossary_box()
 
 
-def page_collab(graph_df: pd.DataFrame) -> None:
+def page_collab(graph_df: pd.DataFrame, insights: Dict[str, Any]) -> None:
     st.header("Collaboration Graph Insights")
-    st.write("Top co-actor pairs as a proxy for graph insights.")
+    collab = insights.get("collab", {})
+    intro = collab.get("intro")
+    if intro:
+        st.write(intro)
+    kpis = collab.get("kpis", {})
+    coactor_pairs = kpis.get("coactor_pairs")
+    if coactor_pairs is not None:
+        st.metric("Co-actor pairs", f"{int(coactor_pairs):,}")
+    top_pair = kpis.get("top_pair")
+    if isinstance(top_pair, dict) and top_pair:
+        actor_1 = top_pair.get("actor_1", "")
+        actor_2 = top_pair.get("actor_2", "")
+        shared = top_pair.get("shared_movies_count", "")
+        st.caption(f"Top pair: {actor_1} + {actor_2} ({shared} shared movies)")
     if graph_df.empty:
-        st.warning(
-            "Graph insights file not found. Export Neo4j queries first (graph_insights_top_coactors)."
-        )
+        if not intro or "not found" not in str(intro).lower():
+            st.warning(
+                "Graph insights file not found. Export Neo4j queries first "
+                "(graph_insights_top_coactors)."
+            )
+        preview = collab.get("top_pairs_preview", [])
+        if preview:
+            st.dataframe(pd.DataFrame(preview), use_container_width=True)
         return
     required = ["actor_1", "actor_2", "shared_movies_count"]
     missing = [c for c in required if c not in graph_df.columns]
@@ -482,7 +587,6 @@ def page_collab(graph_df: pd.DataFrame) -> None:
         graph_df[col] = pd.NA
     if missing:
         st.warning(f"Graph insights missing columns: {', '.join(missing)}")
-    st.metric("Co-actor pairs", f"{len(graph_df):,}")
     top_pairs = graph_df.sort_values("shared_movies_count", ascending=False).head(20)
     st.dataframe(top_pairs, use_container_width=True)
     if not top_pairs.empty:
@@ -521,14 +625,9 @@ def page_collab(graph_df: pd.DataFrame) -> None:
 
 
 def main() -> None:
-    st.title("Movie & Collaboration Insights")
-    st.markdown(
-        "This dashboard turns the Kaggle Movies dataset into business-ready insights: "
-        "financial performance (revenue/ROI), popularity (ratings/votes), time trends, and "
-        "collaboration patterns across cast, genres, keywords, and companies. The ETL pipeline "
-        "cleans and links the raw files so you can explore both classic KPIs and "
-        "relationship-based questions."
-    )
+    insights = load_insights()
+    overview = insights.get("overview", {})
+    st.title(overview.get("title") or "Movie & Collaboration Insights")
     st.sidebar.header("Navigation & Filters")
 
     tables = load_curated_tables()
@@ -556,13 +655,13 @@ def main() -> None:
     )
 
     if page == "Overview":
-        page_overview(df_filt, genre_stats)
+        page_overview(df_filt, genre_stats, insights)
     elif page == "Trends":
-        page_trends(year_trends, filters)
+        page_trends(year_trends, filters, insights)
     elif page == "ROI & Success":
-        page_roi(df_filt, genre_stats)
+        page_roi(df_filt, genre_stats, insights)
     elif page == "Collaboration Graph Insights":
-        page_collab(graph_df)
+        page_collab(graph_df, insights)
 
     st.sidebar.markdown("---")
     csv_data = df_filt.to_csv(index=False).encode("utf-8")

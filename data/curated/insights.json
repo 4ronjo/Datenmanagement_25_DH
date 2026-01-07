@@ -1,0 +1,181 @@
+{
+  "overview": {
+    "title": "Movie & Collaboration Insights",
+    "subtitle": "Data source: Kaggle The Movies Dataset. Curated movies: 45433. Period: 1874-2020.",
+    "kpis": {
+      "movies_total": 45433,
+      "year_min": 1874,
+      "year_max": 2020,
+      "avg_rating_overall": 3.29
+    }
+  },
+  "trends": {
+    "intro": "Time series of movies and key metrics by release year.",
+    "kpis": {
+      "years_count": 135,
+      "top_year_by_movies": 2014
+    }
+  },
+  "roi": {
+    "intro": "ROI & Success: compare budget, revenue, and ROI across genres.",
+    "data_quality_notes": [
+      "Note: many budgets are missing/<=0, ROI can be distorted.",
+      "Note: very small budgets (<100k) can create extreme ROI outliers."
+    ],
+    "kpis": {
+      "genres_count": 20,
+      "top_genre_by_roi": "War"
+    }
+  },
+  "collab": {
+    "intro": "Top 200 co-actor pairs based on shared movies (shared_movies_count).",
+    "kpis": {
+      "coactor_pairs": 200,
+      "top_pair": {
+        "actor_1": "Anthony Daniels",
+        "actor_2": "Kenny Baker",
+        "shared_movies_count": 6
+      }
+    },
+    "top_pairs_preview": [
+      {
+        "actor_1": "Anthony Daniels",
+        "actor_2": "Kenny Baker",
+        "shared_movies_count": 6
+      },
+      {
+        "actor_1": "Anthony Daniels",
+        "actor_2": "Frank Oz",
+        "shared_movies_count": 5
+      },
+      {
+        "actor_1": "Kenny Baker",
+        "actor_2": "Frank Oz",
+        "shared_movies_count": 5
+      },
+      {
+        "actor_1": "Robbie Coltrane",
+        "actor_2": "Alan Rickman",
+        "shared_movies_count": 4
+      },
+      {
+        "actor_1": "Daniel Radcliffe",
+        "actor_2": "Emma Watson",
+        "shared_movies_count": 4
+      },
+      {
+        "actor_1": "Robbie Coltrane",
+        "actor_2": "Rupert Grint",
+        "shared_movies_count": 4
+      },
+      {
+        "actor_1": "Frank Oz",
+        "actor_2": "Ian McDiarmid",
+        "shared_movies_count": 4
+      },
+      {
+        "actor_1": "Daniel Radcliffe",
+        "actor_2": "Rupert Grint",
+        "shared_movies_count": 4
+      },
+      {
+        "actor_1": "William Shatner",
+        "actor_2": "James Doohan",
+        "shared_movies_count": 4
+      },
+      {
+        "actor_1": "Robbie Coltrane",
+        "actor_2": "Daniel Radcliffe",
+        "shared_movies_count": 4
+      }
+    ]
+  },
+  "data_quality": {
+    "tables": {
+      "curated_movie_overview": {
+        "rows": 45433,
+        "cols": 18,
+        "missing_pct": {
+          "roi": 80.45,
+          "rating_count": 80.14,
+          "avg_rating": 80.14,
+          "keyword_list": 31.57,
+          "top_companies": 26.13,
+          "genre_list": 5.37,
+          "runtime": 0.57,
+          "release_year": 0.19,
+          "original_language": 0.02,
+          "vote_count": 0.01
+        },
+        "dtypes": {
+          "movie_id": "Int64",
+          "title": "object",
+          "release_year": "Int64",
+          "original_language": "object",
+          "budget": "int64",
+          "revenue": "float64",
+          "runtime": "float64",
+          "popularity": "float64",
+          "vote_average": "float64",
+          "vote_count": "float64",
+          "profit": "float64",
+          "roi": "float64",
+          "avg_rating": "float64",
+          "rating_count": "float64",
+          "genre_list": "object",
+          "top_companies": "object",
+          "keyword_list": "object",
+          "avg_rating_curated": "float64"
+        }
+      },
+      "curated_year_trends": {
+        "rows": 135,
+        "cols": 5,
+        "missing_pct": {
+          "avg_rating": 52.59,
+          "release_year": 0.0,
+          "movie_count": 0.0,
+          "avg_budget": 0.0,
+          "avg_revenue": 0.0
+        },
+        "dtypes": {
+          "release_year": "Int64",
+          "movie_count": "int64",
+          "avg_budget": "float64",
+          "avg_revenue": "float64",
+          "avg_rating": "float64"
+        }
+      },
+      "curated_genre_stats": {
+        "rows": 20,
+        "cols": 4,
+        "missing_pct": {
+          "avg_rating": 10.0,
+          "genre_name": 0.0,
+          "movie_count": 0.0,
+          "avg_roi": 0.0
+        },
+        "dtypes": {
+          "genre_name": "object",
+          "movie_count": "int64",
+          "avg_roi": "float64",
+          "avg_rating": "float64"
+        }
+      },
+      "graph_insights_top_coactors": {
+        "rows": 200,
+        "cols": 3,
+        "missing_pct": {
+          "actor_1": 0.0,
+          "actor_2": 0.0,
+          "shared_movies_count": 0.0
+        },
+        "dtypes": {
+          "actor_1": "object",
+          "actor_2": "object",
+          "shared_movies_count": "int64"
+        }
+      }
+    }
+  }
+}
