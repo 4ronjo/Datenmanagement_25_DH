@@ -10,7 +10,7 @@ import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Allow running as a script from the src/ folder by injecting the repo root.
+# Allow running from src/ by adding the repo root to sys.path.
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))

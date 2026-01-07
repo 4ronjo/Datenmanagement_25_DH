@@ -6,16 +6,16 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-DATASET = "rounakbanik/the-movies-dataset"  # Kaggle slug  :contentReference[oaicite:2]{index=2}
+DATASET = "rounakbanik/the-movies-dataset"
 
-# Minimal sinnvoll für ETL + Dashboard + Graph:
+# Default tables for ETL + dashboard + graph
 DEFAULT_TABLES = [
     "movies_metadata.csv",
     "credits.csv",
     "keywords.csv",
-    # ratings.csv ist groß; für Uni/MVP reicht oft ratings_small.csv
+    # ratings.csv is large; ratings_small.csv is usually enough
     "ratings_small.csv",
-    # Mapping MovieLens -> TMDB (wird in Neo4j-Export genutzt)
+    # MovieLens -> TMDB mapping (used for graph export)
     "links_small.csv",
 ]
 
@@ -33,7 +33,6 @@ def download_movies(target_dir: Path, include_full_ratings: bool = False) -> Non
     """
     target_dir = Path(target_dir)
 
-    # target_dir is .../data/raw_selected/kaggle_movies  -> data_dir is .../data
     data_dir = target_dir.parent.parent
     raw_dir = data_dir / "raw" / "kaggle_movies"
 
@@ -44,7 +43,6 @@ def download_movies(target_dir: Path, include_full_ratings: bool = False) -> Non
 
     tables = list(DEFAULT_TABLES)
 
-    # If requested, switch to the big ratings file
     if include_full_ratings:
         if "ratings_small.csv" in tables:
             tables.remove("ratings_small.csv")
@@ -76,7 +74,6 @@ def _ensure_kaggle_token(base: Path) -> Path | None:
             try:
                 config.chmod(0o600)
             except PermissionError:
-                # Best effort; Kaggle only warns about permissions.
                 pass
             return candidate
 
@@ -104,7 +101,6 @@ def download_and_unzip(dataset: str, raw_dir: Path) -> None:
     api = KaggleApi()
     api.authenticate()
 
-    # lädt ZIP und entpackt direkt
     api.dataset_download_files(dataset, path=str(raw_dir), unzip=True, quiet=False)
 
 
@@ -118,7 +114,6 @@ def select_tables(raw_dir: Path, selected_dir: Path, tables: Iterable[str]) -> N
             missing.append(name)
             continue
         dst = selected_dir / name
-        # Copy (so raw bleibt raw)
         dst.write_bytes(src.read_bytes())
 
     if missing:

@@ -33,6 +33,7 @@ Outputs:
 - `data/raw_selected/kaggle_movies/` (aus Fetch)
 - `data/processed/` (dim/bridge/fact)
 - `data/curated/` (Dashboard-Tables)
+- `data/curated/insights.json` (automatisch generierte Dashboard-Infos/KPIs)
 - `data/neo4j/*.csv` (Import für Neo4j)
 - `docs/neo4j_load.cypher`, `docs/neo4j_queries.cypher` (werden automatisch erzeugt)
 - `docs/raw_profile.*`, `docs/transform_quality.*`, `docs/pipeline_run.log`
@@ -94,7 +95,7 @@ LIMIT 20;
 ## Projektstruktur (Auszug)
 - `src/run_pipeline.py` – orchestriert Extract→Transform→Load→Neo4j
 - `src/fetch_movies_kaggle.py` – Kaggle Download + Auswahl
-- `src/step0x_*.py` – ETL Schritte (Profiling, Transform, Curated, Neo4j Export)
+- `src/step0x_*.py` – ETL Schritte (Profiling, Transform, Curated, Insights, Neo4j, SQLite)
 - `dashboard/app.py` – Streamlit-App
 - `data/` – raw_selected, processed, curated, neo4j
 - `docs/` – Profile, Qualität, Logs, Neo4j Cypher

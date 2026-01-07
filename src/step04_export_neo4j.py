@@ -24,7 +24,7 @@ def _read_table(name: str, fmt: str, directory: Path) -> pd.DataFrame:
 
 def _write_csv(df: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Use empty string for NA to avoid literal "<NA>" in Neo4j loader
+    # Avoid literal "<NA>" in CSV output.
     df.to_csv(path, index=False, na_rep="")
 
 

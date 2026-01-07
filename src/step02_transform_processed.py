@@ -39,7 +39,7 @@ def _parse_json_list(value: Any) -> list:
                 parsed = ast.literal_eval(value)
                 return parsed if isinstance(parsed, list) else []
             except Exception:
-                # Attempt to coerce single-quote JSON style
+                # Handle single-quoted JSON
                 try:
                     coerced = value.replace("'", '"')
                     parsed = json.loads(coerced)

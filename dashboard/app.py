@@ -8,7 +8,6 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-# Page config
 st.set_page_config(
     page_title="Movie & Collaboration Insights",
     layout="wide",
@@ -47,7 +46,6 @@ def load_curated_tables() -> Dict[str, pd.DataFrame]:
             tables[name] = pd.read_parquet(path)
         else:
             tables[name] = pd.read_csv(path)
-    # optional graph insights
     graph_path, graph_fmt = _find_table("graph_insights_top_coactors")
     if graph_path:
         tables["graph_insights"] = (
@@ -174,10 +172,8 @@ def _render_kpi_row(items: List[Tuple[str, str]]) -> None:
 
 def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     filters: Dict[str, Any] = {}
-    # Sidebar layout: keep the year slider on top
     year_slider_container = st.sidebar.empty()
 
-    # Rating threshold first because it shrinks the available years
     if "rating_count" in df.columns and df["rating_count"].notna().any():
         max_rating = int(pd.to_numeric(df["rating_count"], errors="coerce").max())
         max_rating = max(max_rating, 0)
@@ -188,7 +184,6 @@ def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     else:
         filters["min_rating_count"] = None
 
-    # Release year filter after applying the rating threshold
     filters["year_range"] = None
     if "release_year" in df.columns:
         year_source = df.copy()
@@ -215,7 +210,6 @@ def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
                         max_value=year_max,
                         value=(year_min, year_max),
                     )
-    # Genres
     all_genres = sorted(
         {
             g
@@ -224,13 +218,11 @@ def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         }
     )
     filters["genres"] = st.sidebar.multiselect("Genres", options=all_genres)
-    # Original language
     if "original_language" in df.columns:
         langs = sorted(df["original_language"].dropna().unique().tolist())
         filters["languages"] = st.sidebar.multiselect("Original Language", options=langs)
     else:
         filters["languages"] = []
-    # Text search
     filters["search_text"] = st.sidebar.text_input("Title search")
 
     df_filt = df.copy()

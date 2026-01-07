@@ -23,7 +23,6 @@ def _collect_table_paths(directory: Path) -> Dict[str, Path]:
             if existing is None:
                 tables[name] = path
             else:
-                # Prefer parquet over csv if both exist
                 if existing.suffix == ".csv" and path.suffix == ".parquet":
                     tables[name] = path
     return tables
@@ -126,7 +125,6 @@ def main() -> None:
             row_counts[name] = int(len(df))
             print(f"[sqlite] wrote {name} ({len(df)} rows)")
 
-        # Indexes (defensive)
         index_targets = [
             ("dim_movie", "movie_id"),
             ("dim_person", "person_id"),
@@ -145,7 +143,6 @@ def main() -> None:
             if _maybe_create_index(conn, table, column):
                 index_notes.append(f"{table}({column})")
 
-        # Data quality checks: movie_id coverage
         if _table_exists(conn, "dim_movie") and "movie_id" in _table_columns(conn, "dim_movie"):
             check_tables = [
                 "fact_movie_ratings_agg",
