@@ -60,11 +60,17 @@ def _data_quality_block(tables: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
 
 def _build_overview(movie_df: Optional[pd.DataFrame]) -> Dict[str, Any]:
     kpis: Dict[str, Any] = {}
-    subtitle_parts = ["Data source: Kaggle The Movies Dataset."]
+    subtitle_parts = [
+        "This is a film analytics dashboard built from Kaggle's The Movies Dataset.",
+        "ETL cleans and links the data so you can analyze financial performance (profit/ROI),"
+        " popularity (ratings/votes), time trends, and relationships across cast, crew, genres,"
+        " keywords, and companies.",
+        "Charts show KPIs, top genres, rating/ROI distributions, yearly trends, and co-actor pairs (if available).",
+        "Data source: Kaggle The Movies Dataset.",
+    ]
     if movie_df is not None and not movie_df.empty:
         movies_total = int(len(movie_df))
         kpis["movies_total"] = movies_total
-        subtitle_parts.append(f"Curated movies: {movies_total}.")
 
         if "release_year" in movie_df.columns:
             years = _safe_numeric(movie_df["release_year"]).dropna().astype(int)
@@ -73,7 +79,6 @@ def _build_overview(movie_df: Optional[pd.DataFrame]) -> Dict[str, Any]:
                 year_max = int(years.max())
                 kpis["year_min"] = year_min
                 kpis["year_max"] = year_max
-                subtitle_parts.append(f"Period: {year_min}-{year_max}.")
 
         if "avg_rating" in movie_df.columns:
             avg_rating = _safe_numeric(movie_df["avg_rating"]).mean()

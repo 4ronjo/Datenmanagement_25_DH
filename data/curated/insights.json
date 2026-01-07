@@ -1,7 +1,7 @@
 {
   "overview": {
     "title": "Movie & Collaboration Insights",
-    "subtitle": "Data source: Kaggle The Movies Dataset. Curated movies: 45433. Period: 1874-2020.",
+    "subtitle": "This is a film analytics dashboard built from Kaggle's The Movies Dataset. ETL cleans and links the data so you can analyze financial performance (profit/ROI), popularity (ratings/votes), time trends, and relationships across cast, crew, genres, keywords, and companies. Charts show KPIs, top genres, rating/ROI distributions, yearly trends, and co-actor pairs (if available). Data source: Kaggle The Movies Dataset.",
     "kpis": {
       "movies_total": 45433,
       "year_min": 1874,

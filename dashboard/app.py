@@ -60,7 +60,13 @@ def _default_insights() -> Dict[str, Any]:
     return {
         "overview": {
             "title": "Movie & Collaboration Insights",
-            "subtitle": "KPIs and top genres/movies based on the filtered data.",
+            "subtitle": (
+                "This is a film analytics dashboard built from Kaggle's The Movies Dataset. "
+                "The ETL process cleans and links the data so you can analyze financial performance (profit/ROI), "
+                "popularity (ratings/votes), time trends, and relationships across cast, crew, genres, "
+                "keywords, and companies. Charts show KPIs, top genres, rating/ROI distributions, yearly "
+                "trends, and co-actor pairs (if available). Data source: Kaggle The Movies Dataset."
+            ),
             "kpis": {},
         },
         "trends": {
@@ -298,7 +304,7 @@ def chart_top_genres(df: pd.DataFrame, genre_stats: pd.DataFrame) -> None:
                 title="Top Genres (filtered)",
                 labels={"genre_name": "Genre", "movie_count": "Movies"},
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
             return
     if not genre_stats.empty:
         top10 = genre_stats.sort_values("movie_count", ascending=False).head(10)
@@ -309,7 +315,7 @@ def chart_top_genres(df: pd.DataFrame, genre_stats: pd.DataFrame) -> None:
             title="Top Genres (overall)",
             labels={"genre_name": "Genre", "movie_count": "Movies"},
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     else:
         st.info("No genre data available.")
 
@@ -327,7 +333,7 @@ def chart_rating_hist(df: pd.DataFrame) -> None:
             title=f"{rating_label} distribution",
             labels={rating_col: rating_label},
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     elif "roi" in df.columns and df["roi"].notna().any():
         df_plot = df.copy()
         df_plot["roi"] = pd.to_numeric(df_plot["roi"], errors="coerce")
@@ -338,7 +344,7 @@ def chart_rating_hist(df: pd.DataFrame) -> None:
             title="ROI distribution",
             labels={"roi": "ROI"},
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     else:
         st.info("No ratings/ROI available for histogram.")
 
@@ -381,7 +387,7 @@ def table_top_movies(df: pd.DataFrame) -> None:
     if sort_cols:
         df_disp = df_disp.sort_values(sort_cols, ascending=False)
     df_disp = df_disp.head(50)
-    st.dataframe(df_disp, use_container_width=True)
+    st.dataframe(df_disp, width="stretch")
 
 
 def page_overview(
@@ -389,9 +395,6 @@ def page_overview(
 ) -> None:
     st.header("Overview")
     overview = insights.get("overview", {})
-    subtitle = overview.get("subtitle")
-    if subtitle:
-        st.write(subtitle)
     kpis = overview.get("kpis", {})
     items = []
     if "movies_total" in kpis:
@@ -451,7 +454,7 @@ def page_trends(
             title="Movie count per year",
             labels={"release_year": "Release year", "movie_count": "Movies"},
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     with col2:
         fig = px.line(
             yr,
@@ -460,7 +463,7 @@ def page_trends(
             title="Average revenue per year",
             labels={"release_year": "Release year", "avg_revenue": "Average revenue"},
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     if "avg_rating" in yr.columns and yr["avg_rating"].notna().any():
         fig = px.line(
             yr,
@@ -469,7 +472,7 @@ def page_trends(
             title="Average rating per year",
             labels={"release_year": "Release year", "avg_rating": "Average rating"},
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     glossary_box()
 
 
@@ -514,7 +517,7 @@ def page_roi(
                 title="Budget vs revenue",
                 labels={"budget": "Budget", "revenue": "Revenue"},
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("No data for budget vs revenue.")
     with col2:
@@ -527,7 +530,7 @@ def page_roi(
                 title="Average ROI by genre",
                 labels={"genre_name": "Genre", "avg_roi": "Average ROI"},
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("No genre ROI data available.")
     st.subheader("ROI distribution")
@@ -539,7 +542,7 @@ def page_roi(
             title="ROI distribution",
             labels={"roi": "ROI"},
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     else:
         st.info("No ROI data available.")
     st.caption("ROI is calculated as revenue / budget; if budget=0 -> ROI = NaN.")
@@ -570,7 +573,7 @@ def page_collab(graph_df: pd.DataFrame, insights: Dict[str, Any]) -> None:
             )
         preview = collab.get("top_pairs_preview", [])
         if preview:
-            st.dataframe(pd.DataFrame(preview), use_container_width=True)
+            st.dataframe(pd.DataFrame(preview), width="stretch")
         return
     required = ["actor_1", "actor_2", "shared_movies_count"]
     missing = [c for c in required if c not in graph_df.columns]
@@ -579,7 +582,7 @@ def page_collab(graph_df: pd.DataFrame, insights: Dict[str, Any]) -> None:
     if missing:
         st.warning(f"Graph insights missing columns: {', '.join(missing)}")
     top_pairs = graph_df.sort_values("shared_movies_count", ascending=False).head(20)
-    st.dataframe(top_pairs, use_container_width=True)
+    st.dataframe(top_pairs, width="stretch")
     if not top_pairs.empty:
         fig = px.bar(
             top_pairs.head(10),
@@ -594,7 +597,7 @@ def page_collab(graph_df: pd.DataFrame, insights: Dict[str, Any]) -> None:
                 "actor_2": "Actor 2",
             },
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         glossary_box()
     actors = sorted(
         {
@@ -612,13 +615,16 @@ def page_collab(graph_df: pd.DataFrame, insights: Dict[str, Any]) -> None:
                 (graph_df["actor_1"] == selected) | (graph_df["actor_2"] == selected)
             ].sort_values("shared_movies_count", ascending=False)
             st.subheader(f"Top collaborations for {selected}")
-            st.dataframe(subset.head(20), use_container_width=True)
+            st.dataframe(subset.head(20), width="stretch")
 
 
 def main() -> None:
     insights = load_insights()
     overview = insights.get("overview", {})
     st.title(overview.get("title") or "Movie & Collaboration Insights")
+    subtitle = overview.get("subtitle")
+    if subtitle:
+        st.markdown(subtitle)
     st.sidebar.header("Navigation & Filters")
 
     tables = load_curated_tables()
